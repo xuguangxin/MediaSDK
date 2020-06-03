@@ -201,6 +201,7 @@ protected:
     mfxI32        m_curIndex;
 
     bool m_IsUseExternalFrames;
+    bool m_lazyRegistration;
     bool m_sfcVideoPostProcessing;
 
     mfxFrameInfo m_surface_info;  // for copying
