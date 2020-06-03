@@ -563,6 +563,10 @@ mfxMemId CommonCORE::MapIdx(mfxMemId mid)
     if (0 == mid)
         return 0;
 
+    if (m_bEnableZeroNumFrameActual) {
+        return mid;
+    }
+
     CorrespTbl::iterator ctbl_it;
     ctbl_it = m_CTbl.find(mid);
     if (m_CTbl.end() == ctbl_it)
@@ -670,7 +674,8 @@ CommonCORE::CommonCORE(const mfxU32 numThreadsAvailable, const mfxSession sessio
     m_CoreId(0),
     m_pWrp(NULL),
     m_API_1_19(this),
-    m_deviceId(0)
+    m_deviceId(0),
+    m_bEnableZeroNumFrameActual(false)
 {
     m_bufferAllocator.bufferAllocator.pthis = &m_bufferAllocator;
     CheckTimingLog();
@@ -825,6 +830,9 @@ mfxStatus CommonCORE::SetBufferAllocator(mfxBufferAllocator *allocator)
 mfxFrameAllocator* CommonCORE::GetAllocatorAndMid(mfxMemId& mid)
 {
     UMC::AutomaticUMCMutex guard(m_guard);
+    if (m_bEnableZeroNumFrameActual) {
+        return &m_FrameAllocator.frameAllocator;
+    }
     CorrespTbl::iterator ctbl_it = m_CTbl.find(mid);
     if (m_CTbl.end() == ctbl_it)
         return 0;
