@@ -410,13 +410,14 @@ mfxStatus VideoDECODEVP9_HW::Init(mfxVideoParam *par)
 
     bool isUseExternalFrames = (par->IOPattern & MFX_IOPATTERN_OUT_VIDEO_MEMORY) || m_is_opaque_memory;
     bool reallocFrames = (par->mfx.EnableReallocRequest == MFX_CODINGOPTION_ON);
+    bool zeroNumFrameActual = (par->mfx.EnableZeroNumFrameActual == MFX_CODINGOPTION_ON);
     m_adaptiveMode =
 #ifndef MFX_VA_LINUX
             isUseExternalFrames &&
 #endif
             reallocFrames;
 
-    if (isUseExternalFrames && !reallocFrames)
+    if (zeroNumFrameActual || (isUseExternalFrames && !reallocFrames))
     {
         m_FrameAllocator->SetExternalFramesResponse(&m_response);
     }

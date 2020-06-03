@@ -635,7 +635,7 @@ VAAPIVideoCORE::AllocFrames(
                 // Checking for unsupported mode - external allocator exist but Device handle doesn't set
                 MFX_CHECK(m_Display, MFX_ERR_UNSUPPORTED)
 
-                if (!m_bEnableZeroNumFrameActual && (response->NumFrameActual < request->NumFrameMin))
+                if (response->NumFrameActual && (response->NumFrameActual < request->NumFrameMin))
                 {
                     (*m_FrameAllocator.frameAllocator.Free)(m_FrameAllocator.frameAllocator.pthis, response);
                     MFX_RETURN(MFX_ERR_MEMORY_ALLOC);
