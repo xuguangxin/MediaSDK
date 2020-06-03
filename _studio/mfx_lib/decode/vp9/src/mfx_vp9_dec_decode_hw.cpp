@@ -416,7 +416,7 @@ mfxStatus VideoDECODEVP9_HW::Init(mfxVideoParam *par)
 #endif
             reallocFrames;
 
-    if (isUseExternalFrames && !reallocFrames)
+    if (isUseExternalFrames)
     {
         m_FrameAllocator->SetExternalFramesResponse(&m_response);
     }
