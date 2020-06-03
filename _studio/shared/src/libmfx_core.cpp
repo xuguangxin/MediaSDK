@@ -563,6 +563,10 @@ mfxMemId CommonCORE::MapIdx(mfxMemId mid)
     if (0 == mid)
         return 0;
 
+    if (m_bSetExtFrameAlloc && m_CTbl.empty()) {
+        return mid;
+    }
+
     CorrespTbl::iterator ctbl_it;
     ctbl_it = m_CTbl.find(mid);
     if (m_CTbl.end() == ctbl_it)
@@ -822,6 +826,9 @@ mfxStatus CommonCORE::SetBufferAllocator(mfxBufferAllocator *allocator)
 mfxFrameAllocator* CommonCORE::GetAllocatorAndMid(mfxMemId& mid)
 {
     UMC::AutomaticUMCMutex guard(m_guard);
+    if (m_bSetExtFrameAlloc && m_CTbl.empty()) {
+        return &m_FrameAllocator.frameAllocator;
+    }
     CorrespTbl::iterator ctbl_it = m_CTbl.find(mid);
     if (m_CTbl.end() == ctbl_it)
         return 0;

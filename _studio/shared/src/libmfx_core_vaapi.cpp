@@ -630,7 +630,7 @@ VAAPIVideoCORE::AllocFrames(
                 // Checking for unsupported mode - external allocator exist but Device handle doesn't set
                 MFX_CHECK(m_Display, MFX_ERR_UNSUPPORTED)
 
-                if (response->NumFrameActual < request->NumFrameMin)
+                if (response->NumFrameActual && (response->NumFrameActual < request->NumFrameMin))
                 {
                     (*m_FrameAllocator.frameAllocator.Free)(m_FrameAllocator.frameAllocator.pthis, response);
                     MFX_RETURN(MFX_ERR_MEMORY_ALLOC);
@@ -741,6 +741,9 @@ VAAPIVideoCORE::CreateVA(
     if (!(request->Type & MFX_MEMTYPE_FROM_DECODE) ||
         !(request->Type & MFX_MEMTYPE_DXVA2_DECODER_TARGET))
         return MFX_ERR_NONE;
+    if (param->mfx.EnableZeroNumFrameActual == MFX_CODINGOPTION_ON
+	&& (response->NumFrameActual || response->mids))
+        return MFX_ERR_INVALID_VIDEO_PARAM;
 
     auto const profile = ChooseProfile(param, GetHWType());
     MFX_CHECK(profile != UMC::UNKNOWN, MFX_ERR_UNSUPPORTED);
@@ -757,7 +760,7 @@ VAAPIVideoCORE::CreateVA(
 
     VASurfaceID* RenderTargets = NULL;
     std::vector<VASurfaceID> rt_pool;
-    if (init_render_targets)
+    if (response->NumFrameActual && init_render_targets)
     {
         rt_pool.resize(response->NumFrameActual);
         RenderTargets = &rt_pool[0];
@@ -812,8 +815,8 @@ VAAPIVideoCORE::ProcessRenderTargets(
     if (response->NumFrameActual > 128)
         return MFX_ERR_UNSUPPORTED;
 #endif
-
-    RegisterMids(response, request->Type, !m_bUseExtAllocForHWFrames, pAlloc);
+    if (response->NumFrameActual)
+        RegisterMids(response, request->Type, !m_bUseExtAllocForHWFrames, pAlloc);
     m_pcHWAlloc.release();
 
     return MFX_ERR_NONE;
