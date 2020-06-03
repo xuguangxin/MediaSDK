@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2019 Intel Corporation
+// Copyright (c) 2018-2020 Intel Corporation
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -263,6 +263,9 @@ UMC::Status mfx_UMC_FrameAllocator::InitMfx(UMC::FrameAllocatorParams *,
 
     m_pCore = mfxCore;
     m_IsUseExternalFrames = isUseExternalFrames;
+    m_lazyRegistration = (params->mfx.EnableZeroNumFrameActual == MFX_CODINGOPTION_ON);
+    if (m_lazyRegistration && !m_IsUseExternalFrames)
+        return UMC::UMC_ERR_INVALID_PARAMS;
 
     int32_t bit_depth;
     if (params->mfx.FrameInfo.FourCC == MFX_FOURCC_P010 ||
@@ -384,7 +387,9 @@ void mfx_UMC_FrameAllocator::SetExternalFramesResponse(mfxFrameAllocResponse *re
 {
     m_externalFramesResponse = 0;
 
-    if (!response || !response->NumFrameActual)
+    if (!response)
+        return;
+    if (!response->NumFrameActual && !m_lazyRegistration)
         return;
 
     m_externalFramesResponse = response;
@@ -746,7 +751,7 @@ mfxStatus mfx_UMC_FrameAllocator::SetCurrentMFXSurface(mfxFrameSurface1 *surf, b
     if (extbuf && !m_IsUseExternalFrames)
         return MFX_ERR_INVALID_VIDEO_PARAM;
 
-    if (m_externalFramesResponse && surf->Data.MemId)
+    if ((m_externalFramesResponse && !m_lazyRegistration) && surf->Data.MemId)
     {
         bool isFound = false;
         for (mfxI32 i = 0; i < m_externalFramesResponse->NumFrameActual; i++)
@@ -836,7 +841,7 @@ mfxI32 mfx_UMC_FrameAllocator::AddSurface(mfxFrameSurface1 *surface)
     if (!m_IsUseExternalFrames)
         return -1;
 
-    if (surface->Data.MemId && !m_isSWDecode)
+    if (surface->Data.MemId && !m_isSWDecode && m_externalFramesResponse && !m_lazyRegistration)
     {
         mfxU32 i;
         for (i = 0; i < m_extSurfaces.size(); i++)
@@ -878,7 +883,7 @@ mfxI32 mfx_UMC_FrameAllocator::AddSurface(mfxFrameSurface1 *surface)
         return -1;
     }
 
-    if (m_IsUseExternalFrames && m_isSWDecode)
+    if (m_IsUseExternalFrames && (m_isSWDecode || m_lazyRegistration))
     {
         m_frameDataInternal.AddNewFrame(this, surface, &m_info);
     }
