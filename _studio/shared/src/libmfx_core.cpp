@@ -177,6 +177,13 @@ mfxStatus CommonCORE::AllocFrames(mfxFrameAllocRequest *request,
         // external allocator
         if (m_bSetExtFrameAlloc && !(request->Type & MFX_MEMTYPE_INTERNAL_FRAME))
         {
+            if (m_bDelayedFrameAllocation)
+            {
+                response->mids = NULL;
+                response->NumFrameActual = 0;
+                return MFX_ERR_NONE;
+            }
+
             sts = (*m_FrameAllocator.frameAllocator.Alloc)(m_FrameAllocator.frameAllocator.pthis, &temp_request, response);
 
             if (MFX_ERR_UNSUPPORTED == sts)
@@ -277,6 +284,10 @@ mfxStatus CommonCORE::GetFrameHDL(mfxHDL mid, mfxHDL* handle, bool ExtendedSearc
                 if (MFX_ERR_NONE == sts)
                     return sts;
             }
+            if (m_bDelayedFrameAllocation){
+                *handle = mid;
+                return MFX_ERR_NONE;
+            }
             return MFX_ERR_UNDEFINED_BEHAVIOR;
         }
         else
@@ -310,6 +321,9 @@ mfxStatus CommonCORE::FreeFrames(mfxFrameAllocResponse *response, bool ExtendedS
     mfxStatus sts = MFX_ERR_NONE;
     if(!response)
         return MFX_ERR_NULL_PTR;
+    if (m_bDelayedFrameAllocation) {
+        return sts;
+    }
     if (m_RefCtrTbl.size())
     {
         {
@@ -498,6 +512,10 @@ mfxStatus  CommonCORE::GetExternalFrameHDL(mfxMemId mid, mfxHDL *handle, bool Ex
     try
     {
         MFX_CHECK_NULL_PTR1(handle);
+        if (m_bDelayedFrameAllocation) {
+            *handle = mid;
+            return MFX_ERR_NONE;
+        }
 
         if (m_bSetExtFrameAlloc)
         {
@@ -562,6 +580,10 @@ mfxMemId CommonCORE::MapIdx(mfxMemId mid)
     UMC::AutomaticUMCMutex guard(m_guard);
     if (0 == mid)
         return 0;
+
+    if (m_bDelayedFrameAllocation) {
+        return mid;
+    }
 
     CorrespTbl::iterator ctbl_it;
     ctbl_it = m_CTbl.find(mid);
@@ -670,7 +692,8 @@ CommonCORE::CommonCORE(const mfxU32 numThreadsAvailable, const mfxSession sessio
     m_CoreId(0),
     m_pWrp(NULL),
     m_API_1_19(this),
-    m_deviceId(0)
+    m_deviceId(0),
+    m_bDelayedFrameAllocation(false)
 {
     m_bufferAllocator.bufferAllocator.pthis = &m_bufferAllocator;
     CheckTimingLog();
@@ -874,14 +897,16 @@ mfxBaseWideFrameAllocator* CommonCORE::GetAllocatorByReq(mfxU16 type) const
 mfxStatus CommonCORE::SetFrameAllocator(mfxFrameAllocator *allocator)
 {
     UMC::AutomaticUMCMutex guard(m_guard);
-    if (!allocator)
-        return MFX_ERR_NONE;
 
     if (!m_bSetExtFrameAlloc)
     {
-        m_FrameAllocator.frameAllocator = *allocator;
         m_bSetExtFrameAlloc = true;
-        m_session->m_coreInt.FrameAllocator = *allocator;
+        if (allocator) {
+            m_FrameAllocator.frameAllocator = *allocator;
+            m_session->m_coreInt.FrameAllocator = *allocator;
+        } else {
+            m_bDelayedFrameAllocation = true;;
+        }
         return MFX_ERR_NONE;
     }
     else

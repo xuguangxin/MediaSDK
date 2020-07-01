@@ -273,6 +273,7 @@ protected:
 
 
     mfxU16      m_deviceId;
+    bool        m_bDelayedFrameAllocation;
 private:
     // Forbid the assignment operator
     CommonCORE & operator = (const CommonCORE &);

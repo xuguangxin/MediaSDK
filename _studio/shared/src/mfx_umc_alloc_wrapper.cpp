@@ -227,6 +227,7 @@ void mfx_UMC_FrameAllocator::InternalFrameData::AddNewFrame(mfx_UMC_FrameAllocat
 mfx_UMC_FrameAllocator::mfx_UMC_FrameAllocator()
     : m_curIndex(-1)
     , m_IsUseExternalFrames(true)
+    , m_bDelayedFrameAllocation(false)
     , m_sfcVideoPostProcessing(false)
     , m_surface_info()
     , m_pCore(0)
@@ -263,6 +264,7 @@ UMC::Status mfx_UMC_FrameAllocator::InitMfx(UMC::FrameAllocatorParams *,
 
     m_pCore = mfxCore;
     m_IsUseExternalFrames = isUseExternalFrames;
+    m_bDelayedFrameAllocation = response->NumFrameActual == 0;
 
     int32_t bit_depth;
     if (params->mfx.FrameInfo.FourCC == MFX_FOURCC_P010 ||
@@ -836,7 +838,7 @@ mfxI32 mfx_UMC_FrameAllocator::AddSurface(mfxFrameSurface1 *surface)
     if (!m_IsUseExternalFrames)
         return -1;
 
-    if (surface->Data.MemId && !m_isSWDecode)
+    if (!m_bDelayedFrameAllocation && (surface->Data.MemId && !m_isSWDecode))
     {
         mfxU32 i;
         for (i = 0; i < m_extSurfaces.size(); i++)
@@ -878,7 +880,7 @@ mfxI32 mfx_UMC_FrameAllocator::AddSurface(mfxFrameSurface1 *surface)
         return -1;
     }
 
-    if (m_IsUseExternalFrames && m_isSWDecode)
+    if (m_IsUseExternalFrames && (m_bDelayedFrameAllocation || m_isSWDecode))
     {
         m_frameDataInternal.AddNewFrame(this, surface, &m_info);
     }
