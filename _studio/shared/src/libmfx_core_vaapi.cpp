@@ -625,6 +625,12 @@ VAAPIVideoCORE::AllocFrames(
                 request->Info.FourCC != MFX_FOURCC_P8 &&
                 (request->Type & (MFX_MEMTYPE_EXTERNAL_FRAME | MFX_MEMTYPE_FROM_ENC | MFX_MEMTYPE_FROM_PAK)))
             {
+                if (m_bDelayedFrameAllocation)
+                {
+                    response->mids = NULL;
+                    response->NumFrameActual = 0;
+                    return MFX_ERR_NONE;
+                }
                 // make 'fake' Alloc call to retrieve memId's of surfaces already allocated by app.
                 sts = (*m_FrameAllocator.frameAllocator.Alloc)(m_FrameAllocator.frameAllocator.pthis, &temp_request, response);
 
